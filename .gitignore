@@ -47,3 +47,5 @@ test-results/
 
 # Claude Code credentials (generado por workspace-template)
 .claude-credentials
+CLAUDE.local.md
+.claude/settings.local.json

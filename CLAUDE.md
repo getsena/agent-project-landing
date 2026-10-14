@@ -1,112 +1,74 @@
-# CLAUDE.md
+# CLAUDE.md — agent-project-landing
 
-Guía para Claude Code en este repositorio.
+Guía para Claude Code en este repositorio. Debe funcionar sin el CLAUDE.md del workspace.
 
-## Qué es agent-project-landing
+## Qué es
 
-Landing
+Landing de **Ópera** (opera.somossena.com). El nombre del repo y el `name` de `package.json` (`recupera-landing`) no reflejan el producto; la carpeta `src/ui/recupera` tampoco. Sitio de **opera.somossena.com** (Next.js). Captura leads en `POST /api/lead` y los crea en HubSpot (contacto + negocio) y en Meta CAPI.
 
-**Repo:** `getsena/agent-project-landing`
-**Stack:** Next.js / React
-**Puerto local:** N/A
+- Hermanas: `sena-landing` (somossena.com), `recupera-landing` (recupera.somossena.com), `agent-project-landing` (opera.somossena.com).
+- Fuente de verdad de marca, ICP, precios y términos permitidos: repo `sena-brain`. Si este repo y el vault se contradicen, manda el vault.
+- No llama a `sena-api-core` ni a los satélites: solo a HubSpot y Meta.
 
-## Stack y dependencias
+## Build & Run
 
-Ver `package.json` / `pyproject.toml` / equivalente para la lista completa.
+Next.js 16 + React 19 + Tailwind 4 + TypeScript. Gestor: **yarn**.
 
-**Para levantar localmente:**
 ```bash
-# Instalar dependencias
-npm install   # o: pip install -r requirements.txt / poetry install
-
-# Levantar servidor de desarrollo
-npm run dev   # o el comando equivalente del stack
+yarn install            # el lockfile es formato Berry; sin pin de yarn con corepack todavía
+yarn dev              # http://localhost:3000
+yarn build && yarn start
+yarn lint
+# (no hay script tsc: usa npx tsc --noEmit)
+yarn test:e2e         # ver Gotchas: apunta a producción
 ```
 
-## Convenciones
+Variables de entorno (en Vercel; no se commitean): `HUBSPOT_ACCESS_TOKEN`, `META_CAPI_TOKEN`, `META_PIXEL_ID`. Despliegue: Vercel, con preview en cada PR.
 
-### Commits
-
-Formato conventional commits:
+## Arquitectura
 
 ```
-feat(scope): descripción #N
-fix(scope): descripción #N
-hotfix(scope): descripción #N
-refactor(scope): descripción #N
-docs(scope): descripción #N
-chore(scope): descripción #N
+src/app/          rutas App Router (api/lead, privacy, term, thankyou, sitemap.xml, llms.txt, robots.txt)
+src/ui/           componentes por página (layout, shared, recupera, privacy, term, thankyou)
+src/lib/          data, hooks, lead (módulo HubSpot y atribución), services, store, types, utils
+tests/e2e/        specs de Playwright
 ```
 
-Types válidos: `feat`, `fix`, `hotfix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`, `build`, `style`, `revert`. Header máximo 100 chars.
+La lógica de leads vive en `src/lib/lead/`; el handler de `src/app/api/lead/` es delgado.
 
-### Branching
+## Estilo de código
 
-Modelo **3 branches protegidas**:
+- TypeScript estricto. Nunca `any` (usa `unknown` y acota). No uses enums: `as const` o uniones.
+- Imports absolutos con `@/*` → `src/*`; sin `require`.
+- Colores con los tokens `--color-brand-*` de `src/app/globals.css`, no hex sueltos.
+- Código y comentarios en español, identificadores en inglés. Copy del sitio: español neutro, tuteo.
 
-| Branch | Rol |
-|---|---|
-| `main` | Producción. Solo recibe merges desde `staging` y hotfixes. |
-| `staging` | Pre-producción / QA. Recibe merges desde `dev`. |
-| `dev` | Integración. Default para features y fixes. |
-| `feat/*`, `fix/*`, `hotfix/*` | Ramas de trabajo efímeras. |
+## Testing
 
-**Flujo estándar:**
-1. Crea branch desde `dev`: `git checkout -b feat/issue-{N}-descripcion`
-2. Commits conventional referenciando issue: `feat(scope): descripción #N`
-3. Abre PR contra `dev`. Body incluye `Closes #N`.
-4. Squash merge → `dev`.
+- Playwright en `tests/e2e/`. Simulan HubSpot y no usan red: `attribution-classify`, `client-attribution`, `hubspot-module`, `hubspot-upsert`, `lead-handlers`, `lead-validate`.
+- **Sí usan red:** `opera.spec.ts` (navega producción) y `hubspot-contract.spec.ts` (requiere `HUBSPOT_CONTRACT_TOKEN`).
+- Cambio en `src/lib/lead/` o `src/app/api/` → agrega o ajusta su spec: caso feliz + al menos un error.
+- Confirma que un test nuevo FALLA sin tu cambio y PASA con él.
 
-### Tests
+## Gotchas
 
-- Cada feature requiere: happy path + validation errors + auth errors.
-- No escribir tests vacíos sin asserts.
-- Correr el test con el código roto para confirmar que falla primero.
+- **`yarn test:e2e` apunta a producción** (`baseURL: https://opera.somossena.com`): `opera.spec.ts` navega el sitio real.
+- **Subir `next` u otras dependencias es un PR aparte, decidido por un owner.** Prueba `yarn build` y el preview de Vercel antes de proponerlo (`next@16.3.1` rompió el build standalone de `sena-landing`, #92). Revisa los avisos de seguridad vigentes antes de elegir versión.
+- Claims de marca: no publiques cifras de escala, antigüedad ni resultados (por ejemplo, % de reducción de DSO) sin fuente. Antes de escribir copy, revisa los términos permitidos y prohibidos en `sena-brain`.
+- Tiene `yarn.lock` y `package-lock.json` a la vez (pendiente de unificar): usa yarn. No tiene husky; Commit Lint corre solo en CI.
 
-## Context policy
+## Flujo de trabajo (obligatorio)
 
-Todo contexto de proyecto vive en GitHub.
+Ramas: `main` es producción y `dev` es integración. No existe `staging`.
 
-| Contexto | Dónde |
-|---|---|
-| Estado de una feature | Issue de GitHub (comments) |
-| Plan de un work-item | Body del issue padre + sub-issues (tasks) |
-| Progreso de sesión | Comment en el issue activo |
-| Push mode del work-item | Comment del issue padre con tag `<!-- push-mode: on-pr/per-task/manual -->` |
-| Convenciones | Este `CLAUDE.md` + `.claude/rules/` |
-| Preferencias personales | `CLAUDE.local.md` (no commitear) |
+1. Antes de tocar nada: `git fetch && git branch --show-current`. Nunca trabajes en `main` ni en `dev`.
+2. Crea la rama desde `dev`: `git checkout -b feat/issue-{N}-descripcion` (también `fix/`, `chore/`; `hotfix/` sale de `main`).
+3. Un work-item = una rama = un PR. No mezcles temas en un PR (blog, copy, SEO y dependencias van por separado).
+4. Commits conventional: `tipo(scope): descripción #N`. El subject va en minúscula (commitlint rechaza la mayúscula inicial); header ≤100 caracteres, líneas del cuerpo ≤100. Tipos: feat, fix, hotfix, refactor, docs, test, chore, perf, ci, build, style, revert.
+5. Abre el PR contra `dev` con el template (`Closes #N`). El check **Commit Lint** debe quedar verde.
+6. **Revisión y merge.** `dev` y `main` exigen 1 aprobación de un code owner (`@nicoariffo`, `@sagajardo`, `@RenildoChavezFlujolink`; CODEOWNERS los asigna solos). Solo ellos mergean: squash a `dev`, merge commit en `dev → main`. Quien no es owner abre el PR y espera; no mergees, aunque tengas permiso de escritura.
+7. Confirma que el PR es visible: `gh pr view --json reviewRequests` debe listar a los owners. Si está vacío, avisa.
+8. **Nunca `--no-verify`.** Si un hook se cuelga o falla, detente y repórtalo en el PR. El mismo chequeo corre en CI.
+9. Contexto: sin memoria local ni archivos de progreso. El estado vive en el issue y el PR; un aprendizaje que debe persistir va a este `CLAUDE.md` en el mismo PR. Preferencias personales: `CLAUDE.local.md` (ignorado por git).
 
-## Personalización del workspace
-
-Modelo **"workspace files inviolables"**: skills/rules/scripts del template se sobrescriben en cada `update`. Para personalizar, **copia el archivo con otro nombre** en lugar de editar el original. Skills/rules/MCPs propios del proyecto (no del template) se preservan intactos.
-
-## Flujo estándar de trabajo
-
-```
-Desarrollo:
-  /init → /plan → /apply → /test → /build → /review
-
-Deploy:
-  /secure → /deploy
-
-Soporte:
-  /debug    — cuando /apply o /test fallan
-  /audit    — revisión OWASP profunda antes de mergear cambios sensibles
-  /pentest  — barrida completa de seguridad sobre todo el proyecto (periódico)
-  /sync     — cuando hay drift entre código y GitHub
-  /rollback — cuando un deploy rompe producción
-  /design   — cuando hay trabajo de UI/UX
-  /triage   — limpieza periódica de issues
-```
-
-**Reglas operativas para Claude:**
-
-1. Al arrancar sesión: `/init`
-2. Al cerrar sesión: `/build`
-3. Antes de cada deploy: `/secure` es obligatorio.
-4. Si el plan en GitHub no refleja el código: correr `/sync`.
-5. Aprendizajes que deben persistir: commitear al `CLAUDE.md`.
-6. **`no-edit-without-plan` (regla dura, enforced por hook).** Un hook `PreToolUse` (`.claude/scripts/no-edit-without-plan.sh`) bloquea Edit/Write/Bash-con-redirección cuando la rama actual es `dev`/`main`/`staging` o no tiene prefijo de work-item (`feature/*`, `fix/*`, `refactor/*`, `chore/*`, `hotfix/*`). El bloqueo es técnico, no convencional. Whitelist: `.claude/`, `CLAUDE.local.md`, `.gitignore`. Bypass de emergencia: `CLAUDE_ALLOW_DIRECT_EDIT=1`. Flujo correcto: `/plan` → `/apply` (crea rama) → editar.
-7. **Granularidad invariante:** una invocación de `/apply` = una task (STOP al terminar). Una invocación de `/build` = una task = un commit (si el diff abarca varias tasks, `/build` lo detecta y obliga a partir).
-8. **`/plan` crea N work-items de una vez** cuando el alcance abarca trabajos independientes. La rama la crea `/apply` al arrancar cada work-item, no `/plan`.
-9. **Ownership multi-dev:** `/apply` valida `assignees` y label `in-progress` antes de tomar un work-item. Si otro dev ya lo tomó, no se toca.
+Skills: `/session-start` al empezar y `/progress-tracker` al cerrar (en `.claude/skills/`).
