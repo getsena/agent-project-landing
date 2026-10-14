@@ -6,7 +6,7 @@ Guía para Claude Code en este repositorio.
 
 Landing
 
-**Repo:** `flujopay/agent-project-landing`
+**Repo:** `getsena/agent-project-landing`
 **Stack:** Next.js / React
 **Puerto local:** N/A
 
