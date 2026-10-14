@@ -6,6 +6,7 @@ import { useCountries } from "@/lib/services/countryService";
 import { useCurrencyStore } from "@/lib/store/useCurrencyStore";
 import { useToastStore } from "@/lib/store/useToastStore";
 import Button from "@/ui/shared/Button";
+import { TurnstileWidget, useTurnstile } from "@/ui/shared/Turnstile";
 import { Input } from "@/ui/shared/Input";
 import SimpleCountrySelect, {
   OptionSelect,
@@ -29,6 +30,7 @@ type FormData = {
 
 export const FinalCTA = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const turnstile = useTurnstile();
   const { data: countries = [] } = useCountries();
   const { ipCurrency } = useCurrencyStore();
   const { showToast } = useToastStore();
@@ -98,6 +100,7 @@ export const FinalCTA = () => {
     setIsSubmitting(true);
 
     try {
+      const turnstileToken = await turnstile.getToken();
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -111,14 +114,25 @@ export const FinalCTA = () => {
           alguien_cobrando: data.alguien_cobrando,
           ...getAttributionPayload(),
           landingPage: landingPageUrl(),
+          "cf-turnstile-response": turnstileToken,
         }),
       });
 
-      if (!res.ok) throw new Error("API error");
+      if (!res.ok) {
+        // El token es de un solo uso: hay que pedir otro. 403 y 429 traen un mensaje pensado para el visitante.
+        turnstile.reset();
+        const json = await res.json().catch(() => ({}));
+        if ((res.status === 403 || res.status === 429) && typeof json.error === "string") {
+          showToast({ iconType: "error", message: "No pudimos enviar el formulario", subMessage: json.error });
+          return;
+        }
+        throw new Error("API error");
+      }
 
       reset();
       router.push("/thankyou");
     } catch {
+      turnstile.reset();
       showToast({
         iconType: "error",
         message: "Error al enviar el formulario",
@@ -410,6 +424,8 @@ export const FinalCTA = () => {
                   Política de Privacidad
                 </Link>
               </p>
+
+              <TurnstileWidget turnstile={turnstile} />
 
               <Button
                 type="submit"
