@@ -354,6 +354,33 @@ Marcar el work-item con label `review` y quitar `in-progress`:
 gh issue edit $PARENT_N --add-label "review" --remove-label "in-progress"
 ```
 
+### 6.5.1. Asignar revisores y avisar quién debe aprobar
+
+Inmediatamente después de abrir el PR (o al llegar a 6.6 con un PR preexistente), decidir
+según quién es el autor. No se pregunta: es parte de abrir el PR.
+
+- Autor en `.github/REVIEWERS` (experto): no requiere review. No se asigna a nadie.
+- Cualquier otro autor: requiere 1 aprobación de un experto. Se asignan todos los expertos.
+
+```bash
+BASE=$(gh pr view "$PR_NUMBER" --json baseRefName --jq .baseRefName)
+AUTHOR=$(gh pr view "$PR_NUMBER" --json author --jq .author.login)
+read_experts() {
+  gh api "repos/{owner}/{repo}/contents/.github/REVIEWERS?ref=$1" --jq .content 2>/dev/null \
+    | base64 -d 2>/dev/null | grep -v '^#' | grep -v '^[[:space:]]*$'
+}
+EXPERTS=$(read_experts "$BASE" || read_experts dev)
+if echo "$EXPERTS" | grep -qixF "$AUTHOR"; then
+  IS_EXPERT=1
+else
+  IS_EXPERT=0
+  for u in $EXPERTS; do
+    gh api -X POST "repos/{owner}/{repo}/pulls/$PR_NUMBER/requested_reviewers" \
+      -f "reviewers[]=$u" >/dev/null || echo "⚠ No se pudo asignar a @$u"
+  done
+fi
+```
+
 **Multi-repo:** si el work-item afecta varios repos, abrir un PR por repo (nunca consolidar repos distintos en un solo PR). Cada PR cierra las tasks que le corresponden a ese repo.
 
 ### 6.6. Elegir el camino de review/merge
@@ -410,7 +437,7 @@ esac
 
 **Reglas:**
 - **Default = opción 1 (dejar para review humano).** No es deuda técnica esperar review — es el workflow correcto en equipos.
-- **Opción 2 (self-merge) solo tiene sentido para solo-devs** o repos donde el dev tiene permisos de merge directo. Si la rama protegida `dev` requiere review, esto fallará y se reporta el error sin reintentos creativos.
+- **Opción 2 (self-merge):** con `IS_EXPERT=0` no ofrecer la opción 2: mostrar solo 1, 3 y 4. Con `IS_EXPERT=1` la opción 2 está permitida. Nunca usar `--admin`; si GitHub rechaza el merge, reportar el error y que el dev mergee desde la web.
 - **Opción 3 (auto-merge) requiere "Allow auto-merge" habilitado** en Settings del repo. Si no está, sugerir habilitarlo y caer a opción 1 o 4.
 - **Nunca mergear sin que el dev pida explícitamente la opción 2 o 3.** Si el dev solo dijo "abre el PR", el default es **dejarlo abierto**.
 

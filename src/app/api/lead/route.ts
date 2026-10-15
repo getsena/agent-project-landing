@@ -10,6 +10,8 @@ import {
   getToken,
   upsertContact,
 } from "@/lib/lead/hubspot";
+import { notifyLead, notifyLeadInBackground, type NotifyLeadInput } from "@/lib/lead/notify";
+import { allowUnverified, clientIp, turnstileTokenFrom, verifyTurnstile } from "@/lib/lead/turnstile";
 import { readJsonBody, validateLead, type LeadPayload } from "@/lib/lead/validate";
 
 const INTERES_DEL_PRODUCTO = "Opera";
@@ -38,9 +40,8 @@ function normalizeCobrando(value: string): string {
   return v;
 }
 
-function buildContactProperties(body: LeadPayload): Record<string, string> {
-  const prioridad = calcPrioridad(body.facturas_pendientes, body.alguien_cobrando);
-  const clasificacion = classifyLead({
+function clasificar(body: LeadPayload) {
+  return classifyLead({
     utmSource: body.utmSource,
     utmMedium: body.utmMedium,
     utmCampaign: body.utmCampaign,
@@ -49,6 +50,43 @@ function buildContactProperties(body: LeadPayload): Record<string, string> {
     wbraid: body.wbraid,
     fbclid: body.fbclid,
   });
+}
+
+// Datos del aviso interno por correo (ver src/lib/lead/notify.ts).
+function notifyInput(
+  body: LeadPayload,
+  outcome: NotifyLeadInput["outcome"],
+  extra: { contactId?: string; error?: string; unverified?: boolean } = {}
+): NotifyLeadInput {
+  const clasificacion = clasificar(body);
+  return {
+    outcome,
+    source: "opera",
+    lead: {
+      nombre: body.nombre,
+      apellido: body.apellido,
+      empresa: body.empresa,
+      email: body.email,
+      telefono: body.telefono,
+      extras: {
+        "Facturas pendientes": body.facturas_pendientes,
+        "¿Alguien cobrando?": body.alguien_cobrando,
+        Prioridad: calcPrioridad(body.facturas_pendientes, body.alguien_cobrando),
+      },
+    },
+    attribution: {
+      fuente: clasificacion.fuente,
+      origen: clasificacion.origen,
+      origenDetalle: clasificacion.origenDetalle,
+      utmCampaign: body.utmCampaign,
+    },
+    ...extra,
+  };
+}
+
+function buildContactProperties(body: LeadPayload): Record<string, string> {
+  const prioridad = calcPrioridad(body.facturas_pendientes, body.alguien_cobrando);
+  const clasificacion = clasificar(body);
 
   const properties: Record<string, string> = {
     firstname: body.nombre,
@@ -139,10 +177,30 @@ export async function POST(req: NextRequest) {
   }
   const body = validated.value;
 
+  // Turnstile: un token inválido se rechaza; sin token o con Cloudflare caído el lead se procesa igual,
+  // pero queda marcado, sin Meta CAPI y con tope por IP (ver src/lib/lead/turnstile.ts).
+  const ip = clientIp(req.headers);
+  const verification = await verifyTurnstile(turnstileTokenFrom(parsed.value), { remoteIp: ip, action: "lead" });
+  if (verification.status === "rejected") {
+    return NextResponse.json(
+      { ok: false, error: "No pudimos verificar que eres una persona. Recarga la página e intenta de nuevo." },
+      { status: 403 }
+    );
+  }
+  const unverified = verification.status === "unverified";
+  if (unverified && !allowUnverified(ip)) {
+    return NextResponse.json(
+      { ok: false, error: "Recibimos demasiados intentos. Intenta de nuevo en unos minutos." },
+      { status: 429 }
+    );
+  }
+
+  let savedContactId: string | undefined;
   try {
     const { id: contactId, isNew } = await upsertContact(token, buildContactProperties(body));
+    savedContactId = contactId;
     const prioridad = calcPrioridad(body.facturas_pendientes, body.alguien_cobrando);
-    await Promise.all([
+    const [dealCreated] = await Promise.all([
       createDeal(
         token,
         contactId,
@@ -155,10 +213,20 @@ export async function POST(req: NextRequest) {
       addToList(token, contactId, PRODUCT_LIST_ID.Opera),
     ]);
     // Meta solo se entera de leads que el CRM sí guardó (evita conversiones fantasma)
-    await sendMetaCapi(body);
+    if (!unverified) await sendMetaCapi(body);
+    // Aviso interno solo si hay contacto o negocio nuevo: el reenvío de un lead ya abierto no repite el correo.
+    if (isNew || dealCreated) notifyLeadInBackground(notifyInput(body, "ok", { contactId, unverified }));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[HubSpot] error:", err instanceof Error ? err.message : "CRM error");
+    // El correo es el único registro del lead: se espera (tope de 3 s) antes de responder el error.
+    await notifyLead(
+      notifyInput(body, "hubspot_failed", {
+        contactId: savedContactId,
+        error: err instanceof Error ? err.message : "error desconocido",
+        unverified,
+      })
+    );
     return NextResponse.json(
       { ok: false, error: "No pudimos registrar tu solicitud. Intenta de nuevo." },
       { status: 502 }
