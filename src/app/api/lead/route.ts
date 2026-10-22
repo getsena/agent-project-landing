@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
+import { casoExtras, casoResumen } from "@/lib/lead/caso";
 import { classifyLead } from "@/lib/lead/classify";
 import {
   OWNER_FRANCISCO,
@@ -28,6 +29,13 @@ function calcPrioridad(facturas: string, cobrando: string): "A" | "B" | "C" {
   if (score >= 4) return "A";
   if (score >= 2) return "B";
   return "C";
+}
+
+// Sin facturas pendientes ni «alguien cobrando» (formulario de dos pasos) no hay prioridad que calcular:
+// se deja vacía en vez de marcar el lead como C.
+function prioridadDe(body: LeadPayload): "A" | "B" | "C" | undefined {
+  if (!body.facturas_pendientes || !body.alguien_cobrando) return undefined;
+  return calcPrioridad(body.facturas_pendientes, body.alguien_cobrando);
 }
 
 function calcSenaIntencion(p: "A" | "B" | "C"): string {
@@ -59,6 +67,7 @@ function notifyInput(
   extra: { contactId?: string; error?: string; unverified?: boolean } = {}
 ): NotifyLeadInput {
   const clasificacion = clasificar(body);
+  const prioridad = prioridadDe(body);
   return {
     outcome,
     source: "opera",
@@ -68,11 +77,13 @@ function notifyInput(
       empresa: body.empresa,
       email: body.email,
       telefono: body.telefono,
-      extras: {
-        "Facturas pendientes": body.facturas_pendientes,
-        "¿Alguien cobrando?": body.alguien_cobrando,
-        Prioridad: calcPrioridad(body.facturas_pendientes, body.alguien_cobrando),
-      },
+      extras: body.caso
+        ? casoExtras(body.caso)
+        : {
+            "Facturas pendientes": body.facturas_pendientes,
+            "¿Alguien cobrando?": body.alguien_cobrando,
+            Prioridad: prioridad ?? "",
+          },
     },
     attribution: {
       fuente: clasificacion.fuente,
@@ -85,12 +96,11 @@ function notifyInput(
 }
 
 function buildContactProperties(body: LeadPayload): Record<string, string> {
-  const prioridad = calcPrioridad(body.facturas_pendientes, body.alguien_cobrando);
+  const prioridad = prioridadDe(body);
   const clasificacion = clasificar(body);
 
   const properties: Record<string, string> = {
     firstname: body.nombre,
-    lastname: body.apellido,
     email: body.email,
     phone: body.telefono,
     company: body.empresa,
@@ -100,12 +110,19 @@ function buildContactProperties(body: LeadPayload): Record<string, string> {
     etapa_del_lead: "Interesado",
     fuente_del_lead: clasificacion.fuente,
     origen_detalle: clasificacion.origenDetalle,
-    sena_prioridad: prioridad,
-    sena_intencion: calcSenaIntencion(prioridad),
-    facturas_pendientes: body.facturas_pendientes,
-    alguien_cobrando: normalizeCobrando(body.alguien_cobrando),
-    sena_contexto: `Lead landing Opera. Prioridad auto: ${prioridad}. Origen: ${clasificacion.origen || "otro"}.`,
+    sena_contexto: body.caso
+      ? `Lead landing Opera (Cuéntanos tu caso). ${casoResumen(body.caso)}. Origen: ${clasificacion.origen || "otro"}.`
+      : `Lead landing Opera. Prioridad auto: ${prioridad}. Origen: ${clasificacion.origen || "otro"}.`,
   };
+
+  // El formulario de dos pasos pide nombre y apellido juntos: sin apellido no se manda uno vacío.
+  if (body.apellido) properties.lastname = body.apellido;
+  if (prioridad) {
+    properties.sena_prioridad = prioridad;
+    properties.sena_intencion = calcSenaIntencion(prioridad);
+  }
+  if (body.facturas_pendientes) properties.facturas_pendientes = body.facturas_pendientes;
+  if (body.alguien_cobrando) properties.alguien_cobrando = normalizeCobrando(body.alguien_cobrando);
 
   // origen queda vacío para pagos de una plataforma desconocida (regla R4): no se envía.
   if (clasificacion.origen) properties.origen = clasificacion.origen;
@@ -199,14 +216,16 @@ export async function POST(req: NextRequest) {
   try {
     const { id: contactId, isNew } = await upsertContact(token, buildContactProperties(body));
     savedContactId = contactId;
-    const prioridad = calcPrioridad(body.facturas_pendientes, body.alguien_cobrando);
+    const prioridad = prioridadDe(body);
     const [dealCreated] = await Promise.all([
       createDeal(
         token,
         contactId,
         {
           dealname: `Opera — ${body.empresa}`,
-          description: `Prioridad: ${prioridad} · Facturas: ${body.facturas_pendientes} · Cobrando: ${body.alguien_cobrando}`,
+          description: body.caso
+            ? `Cuéntanos tu caso · ${casoResumen(body.caso)}`
+            : `Prioridad: ${prioridad} · Facturas: ${body.facturas_pendientes} · Cobrando: ${body.alguien_cobrando}`,
         },
         !isNew
       ),
