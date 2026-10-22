@@ -5,34 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-
-declare global {
-  interface Window {
-    dataLayer?: Record<string, unknown>[];
-    fbq?: (...args: unknown[]) => void;
-    gtag?: (...args: unknown[]) => void;
-  }
-}
 
 export const ThankyouPage = () => {
   const router = useRouter();
-
-  useEffect(() => {
-    if (!window.dataLayer) {
-      window.dataLayer = [];
-    }
-    window.dataLayer.push({
-      event: "conversion_event_signup_2",
-      origin: "opera",
-    });
-    if (window.gtag) {
-      window.gtag("event", "conversion", { send_to: "AW-17962976949/TyATCOr4nKccELWNtfVC" });
-    }
-    if (window.fbq) {
-      window.fbq("track", "Lead", { content_name: "opera" });
-    }
-  }, []);
 
   return (
     <div className="min-h-screen bg-[#F9F9F9] flex flex-col">
@@ -74,7 +49,7 @@ export const ThankyouPage = () => {
               </p>
 
               <p className="text-brand-primary-dark text-center text-sm md:text-base font-bold leading-relaxed mb-6">
-                Agenda tu reunión de 30 minutos ahora mismo. Sin compromiso.
+                Agenda tu reunión de 30 minutos ahora mismo.
               </p>
 
               {/* HubSpot inline calendar embed */}
@@ -103,7 +78,7 @@ export const ThankyouPage = () => {
               <div className="flex flex-col items-center gap-3 mt-6 pt-6 border-t border-slate-100">
                 <p className="text-slate-500 text-sm">¿Tienes dudas? Habla con nuestro agente</p>
                 <Link
-                  href="https://wa.me/56977290160?text=Hola%2C+me+registr%C3%A9+en+Opera.+%C2%BFC%C3%B3mo+funciona+para+gestionar+mi+equipo+de+cobranza%3F"
+                  href="https://wa.me/56977290160?text=Hola%2C+me+registr%C3%A9+en+Sena+%C3%93pera.+%C2%BFC%C3%B3mo+funciona+para+gestionar+mi+equipo+de+cobranza%3F"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#1da851] text-white font-bold text-sm px-5 py-3 rounded-full transition-all duration-200 hover:shadow-lg hover:shadow-[#25D366]/25 hover:scale-[1.02]"
@@ -120,10 +95,6 @@ export const ThankyouPage = () => {
           {/* Footer trust */}
           <div className="mt-8 flex flex-col items-center gap-4">
             <div className="flex items-center gap-6 text-slate-400 text-xs">
-              <span className="flex items-center gap-1.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="1.5" /><path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                Sin compromiso
-              </span>
               <span className="flex items-center gap-1.5">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="1.5" /><path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
                 30 min
