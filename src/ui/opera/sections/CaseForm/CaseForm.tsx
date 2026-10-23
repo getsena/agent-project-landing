@@ -4,7 +4,7 @@ import { trackEvent, trackPixel } from "@/lib/analytics";
 import { getAttributionPayload, landingPageUrl } from "@/lib/lead/clientAttribution";
 import type { LeadCaso } from "@/lib/lead/validate";
 import { useCurrencyStore } from "@/lib/store/useCurrencyStore";
-import { trackLeadConversion } from "@/lib/tracking/leadConversion";
+import { newEventId, trackLeadConversion } from "@/lib/tracking/leadConversion";
 import { TurnstileWidget, useTurnstile } from "@/ui/shared/Turnstile";
 import clsx from "clsx";
 import Link from "next/link";
@@ -134,6 +134,7 @@ export const CaseForm = () => {
     setErrorEnvio("");
     trackEvent({ action: "form_submit", category: "form", label: "contact_form" });
     trackPixel("InitiateCheckout");
+    const eventId = newEventId();
     const [nombre, ...resto] = contacto.nombre.trim().split(/\s+/);
     const caso: LeadCaso = {
       cotizar,
@@ -174,7 +175,7 @@ export const CaseForm = () => {
         return;
       }
 
-      trackLeadConversion();
+      trackLeadConversion(eventId);
       setEnviando(false);
       setEnviado(true);
     } catch {

@@ -4,6 +4,7 @@ import { test, expect } from '@playwright/test'
 
 import { POST as postLead } from '@/app/api/lead/route'
 import { validateLead } from '@/lib/lead/validate'
+import { trackLeadConversion } from '@/lib/tracking/leadConversion'
 
 // Formulario de dos pasos «Cuéntanos tu caso»: manda un bloque `caso` y no trae apellido (si el visitante
 // escribe un solo nombre), facturas pendientes ni «alguien cobrando». /api/lead lo acepta sin inventar
@@ -157,8 +158,30 @@ test.describe('formulario de la landing', () => {
   const t = readFileSync('src/ui/opera/sections/CaseForm/CaseForm.tsx', 'utf8')
 
   test('emite una sola conversión, después de que el servidor confirma el lead', () => {
-    expect(t.match(/trackLeadConversion\(\)/g)).toHaveLength(1)
-    expect(t.indexOf('trackLeadConversion()')).toBeGreaterThan(t.indexOf('!json.ok'))
+    expect(t.match(/trackLeadConversion\(eventId\)/g)).toHaveLength(1)
+    expect(t.indexOf('trackLeadConversion(eventId)')).toBeGreaterThan(t.indexOf('!json.ok'))
+  })
+
+  test('la conversión de Ads lleva transaction_id y el Lead de Meta eventID, ambos el eventId del lead', () => {
+    const llamadas: unknown[][] = []
+    const dataLayer: Record<string, unknown>[] = []
+    Object.assign(globalThis, {
+      window: {
+        dataLayer,
+        gtag: (...a: unknown[]) => llamadas.push(['gtag', ...a]),
+        fbq: (...a: unknown[]) => llamadas.push(['fbq', ...a]),
+      },
+    })
+    try {
+      trackLeadConversion('lead-123')
+    } finally {
+      Reflect.deleteProperty(globalThis, 'window')
+    }
+    expect(dataLayer).toEqual([{ event: 'conversion_event_signup_2', origin: 'opera' }])
+    expect(llamadas).toEqual([
+      ['gtag', 'event', 'conversion', { send_to: 'AW-17962976949/TyATCOr4nKccELWNtfVC', transaction_id: 'lead-123' }],
+      ['fbq', 'track', 'Lead', { content_name: 'opera' }, { eventID: 'lead-123' }],
+    ])
   })
 
   test('envía a /api/lead con Turnstile, atribución y el teléfono con prefijo de país', () => {
