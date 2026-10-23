@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { casoExtras, casoResumen } from "@/lib/lead/caso";
@@ -136,7 +136,8 @@ function buildContactProperties(body: LeadPayload): Record<string, string> {
   return properties;
 }
 
-async function sendMetaCapi(body: LeadPayload): Promise<void> {
+// event_id = el eventID del píxel en el navegador: Meta junta los dos eventos como un solo lead.
+async function sendMetaCapi(body: LeadPayload, eventId: string): Promise<void> {
   const pixelId = process.env.META_PIXEL_ID;
   const capiToken = process.env.META_CAPI_TOKEN;
   if (!pixelId || !capiToken) return;
@@ -159,6 +160,7 @@ async function sendMetaCapi(body: LeadPayload): Promise<void> {
         data: [
           {
             event_name: "Lead",
+            event_id: eventId,
             event_time: Math.floor(Date.now() / 1000),
             action_source: "website",
             user_data: userData,
@@ -232,7 +234,7 @@ export async function POST(req: NextRequest) {
       addToList(token, contactId, PRODUCT_LIST_ID.Opera),
     ]);
     // Meta solo se entera de leads que el CRM sí guardó (evita conversiones fantasma)
-    if (!unverified) await sendMetaCapi(body);
+    if (!unverified) await sendMetaCapi(body, body.eventId ?? randomUUID());
     // Aviso interno solo si hay contacto o negocio nuevo: el reenvío de un lead ya abierto no repite el correo.
     if (isNew || dealCreated) notifyLeadInBackground(notifyInput(body, "ok", { contactId, unverified }));
     return NextResponse.json({ ok: true });

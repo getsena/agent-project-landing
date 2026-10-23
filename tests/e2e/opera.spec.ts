@@ -70,6 +70,7 @@ test('formulario: paso 1, paso 2 y gracias en el mismo formulario', async ({ pag
     utmCampaign: 'test-e2e',
   })
   expect((sent[0] as { telefono: string }).telefono).toMatch(/^\+5[16]911112222$/)
+  expect((sent[0] as { eventId: string }).eventId).toMatch(/^[0-9a-f-]{36}$/)
 })
 
 test('formulario: el paso 2 valida los datos de contacto antes de enviar', async ({ page }) => {

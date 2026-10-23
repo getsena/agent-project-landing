@@ -162,6 +162,7 @@ export const CaseForm = () => {
           ...getAttributionPayload(),
           landingPage: landingPageUrl(),
           "cf-turnstile-response": turnstileToken,
+          eventId,
         }),
       });
       const json = await res.json().catch(() => ({ ok: false }));

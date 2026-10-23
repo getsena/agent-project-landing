@@ -8,6 +8,7 @@ const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE = /^[+\d\s().-]{6,30}$/
 const CLICK_ID = /^[\w.~%-]{1,256}$/
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export const FACTURAS = ['1-10', '10-50', '50+'] as const
 export const COBRANDO = ['Sí', 'Si', 'No', 'A veces'] as const
@@ -32,6 +33,8 @@ export type Attribution = {
   wbraid?: string
   fbclid?: string
   landingPage?: string
+  // Id del lead generado en el navegador: el mismo que usan el píxel de Meta y la conversión de Ads.
+  eventId?: string
 }
 
 // Respuestas del formulario de dos pasos. No trae facturas pendientes ni «alguien cobrando»: el lead se
@@ -126,6 +129,7 @@ function attribution(r: Record<string, unknown>): Attribution {
     wbraid: optional(r.wbraid, 256, CLICK_ID),
     fbclid: optional(r.fbclid, 256, CLICK_ID),
     landingPage: httpUrl(r.landingPage),
+    eventId: optional(r.eventId, 36, UUID)?.toLowerCase(),
   }
 }
 

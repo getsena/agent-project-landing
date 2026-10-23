@@ -187,6 +187,7 @@ test.describe('formulario de la landing', () => {
   test('envía a /api/lead con Turnstile, atribución y el teléfono con prefijo de país', () => {
     expect(t).toContain('fetch("/api/lead"')
     expect(t).toContain('"cf-turnstile-response": turnstileToken')
+    expect(t).toMatch(/turnstileToken,\s*eventId,/)
     expect(t).toContain('...getAttributionPayload()')
     expect(t).toMatch(/telefono: `\$\{prefijo\}/)
   })
