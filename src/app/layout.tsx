@@ -10,30 +10,31 @@ import { adobeCleanFont, canaroFont, caslonFont } from "./fonts";
 import "./globals.css";
 import Providers from "./providers";
 
+const TITLE = "Sena Ópera · Tu equipo de cobranza B2B externo";
+const DESCRIPTION =
+  "Ópera es el equipo de cobranza B2B que tu empresa no tiene: nosotros cobramos, tú ves los resultados. Desde US$50 al mes, con análisis de cartera sin costo. Chile y Perú.";
+
 export const metadata: Metadata = {
-  title: "Opera by Sena — La plataforma de cobranza B2B",
-  description:
-    "Opera by Sena: la plataforma de cobranza B2B que se adapta a tu operación. Implementación estratégica, agentes inteligentes y resultados reales.",
+  title: TITLE,
+  description: DESCRIPTION,
   keywords:
-    "Opera, Sena, cobranza B2B, plataforma de cobranza, agentes de cobranza, automatización de cobranza, gestión de cartera",
+    "Sena Ópera, Sena, cobranza B2B, cobranza externalizada, equipo de cobranza externo, cobranza de facturas, Chile, Perú",
   authors: [{ name: "Sena" }],
   robots: { index: true, follow: true },
   metadataBase: new URL("https://agente.somossena.com"),
-  alternates: { canonical: "/" },
   twitter: {
     card: "summary_large_image",
-    title: "Opera by Sena — La plataforma de cobranza B2B",
-    description: "Opera by Sena: la plataforma de cobranza B2B que se adapta a tu operación.",
-    images: ["https://agente.somossena.com/sena-crm-lite.jpg"],
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/sena-crm-lite.jpg"],
   },
   openGraph: {
-    title: "Opera by Sena — La plataforma de cobranza B2B",
-    description:
-      "Opera by Sena: la plataforma de cobranza B2B que se adapta a tu operación. Implementación estratégica, agentes inteligentes y resultados reales.",
+    title: TITLE,
+    description: DESCRIPTION,
     type: "website",
-    url: "https://agente.somossena.com",
-    images: ["https://agente.somossena.com/sena-crm-lite.jpg"],
-    siteName: "Opera by Sena",
+    url: "/",
+    images: ["/sena-crm-lite.jpg"],
+    siteName: "Sena",
     locale: "es_CL",
   },
   other: {
@@ -56,57 +57,6 @@ export default async function RootLayout({
     <Providers country={country} countries={countries}>
       <html lang="es" dir="ltr">
         <head>
-          {/* JSON-LD — Service + FAQPage */}
-          <Script
-            id="schema-org"
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify({
-                "@context": "https://schema.org",
-                "@graph": [
-                  {
-                    "@type": "Service",
-                    name: "Opera by Sena",
-                    description: "Servicio de cobranza B2B delegada. Opera by Sena gestiona tu cartera vencida con un equipo especializado: seguimiento, negociación y resultados reales.",
-                    url: "https://agente.somossena.com",
-                    serviceType: "Cobranza B2B Delegada",
-                    provider: { "@type": "Organization", name: "Sena", url: "https://www.somossena.com" },
-                    areaServed: ["CL", "PE"],
-                    inLanguage: "es-CL",
-                  },
-                  {
-                    "@type": "FAQPage",
-                    mainEntity: [
-                      {
-                        "@type": "Question",
-                        name: "¿Qué es Opera by Sena?",
-                        acceptedAnswer: {
-                          "@type": "Answer",
-                          text: "Opera by Sena es un servicio de cobranza B2B delegada. Nuestro equipo gestiona tu cartera vencida: seguimiento, llamadas, negociación y reportes. Tú solo ves los resultados.",
-                        },
-                      },
-                      {
-                        "@type": "Question",
-                        name: "¿Cómo funciona el servicio de cobranza delegada?",
-                        acceptedAnswer: {
-                          "@type": "Answer",
-                          text: "Traspasal tu cartera de facturas vencidas a Opera y nuestro equipo asume la gestión completa: contacto con deudores, seguimiento de acuerdos de pago y reporting en tiempo real.",
-                        },
-                      },
-                      {
-                        "@type": "Question",
-                        name: "¿Opera by Sena trabaja con empresas de todos los tamaños?",
-                        acceptedAnswer: {
-                          "@type": "Answer",
-                          text: "Sí. Opera está diseñado para empresas B2B chilenas que no tienen un equipo dedicado de cobranza o que quieren externalizar esa función para mejorar la recuperación de su cartera.",
-                        },
-                      },
-                    ],
-                  },
-                ],
-              }),
-            }}
-          />
           {/* Google Tag Manager — Opera (GTM-52ZMKFRM) */}
           <Script id="gtm-script" strategy="afterInteractive">
             {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-52ZMKFRM');`}
@@ -177,7 +127,7 @@ export default async function RootLayout({
           <ModalRenderer />
           <Toast />
           <Whatsapp
-            message="Hola, vi su web y quiero saber más sobre Opera by Sena y cómo funciona."
+            message="Hola, vi su web y quiero saber más sobre Sena Ópera y cómo funciona."
             animated
           />
         </body>

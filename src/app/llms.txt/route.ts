@@ -1,42 +1,31 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const content = `# Opera by Sena — Plataforma de cobranza B2B
+  const content = `# Sena Ópera
 
-> Plataforma de cobranza B2B que combina tecnología, estrategia y agentes inteligentes.
-> Implementación rápida, resultados medibles desde el primer mes.
+> Sena Ópera es el equipo de cobranza B2B externo de Sena. Gestiona la cobranza de las facturas de tu
+> empresa por correo, SMS, WhatsApp y llamadas: IA para lo temprano, especialistas humanos para lo
+> difícil. Tú ves cada gestión. Chile y Perú.
 
-## Qué hace Opera
+## Precio
 
-Opera gestiona el ciclo completo de cobranza B2B mediante:
-- Agentes inteligentes que automatizan contactos y seguimientos
-- Estrategia de cobranza adaptada a cada tipo de cartera
-- Dashboard en tiempo real con métricas de recupero
-- Integración con sistemas de facturación existentes
+- Desde US$50 al mes para carteras de menos de 10 clientes activos.
+- US$300 al mes para carteras de más de 50 clientes activos.
+- Entre 10 y 50 clientes activos, se cotiza en el análisis inicial de la cartera, que es gratis.
+- Operando en 2 semanas desde la firma del acuerdo.
 
-## Propuesta de valor
+## Páginas
 
-- Sin setup complejo — implementación en días, no meses
-- Sin compromisos — el cliente define el ritmo y la estrategia
-- Resultados reales — métricas de recupero transparentes desde el primer mes
-
-## A quién va dirigido
-
-Empresas B2B con:
-- Carteras de cobranza medianas y grandes
-- Necesidad de escalar operaciones sin aumentar equipo
-- Operación en Chile y LATAM
-
-## Páginas principales
-
-- [Inicio](https://agente.somossena.com): propuesta de valor y cómo funciona
-- [Contacto](https://agente.somossena.com#contacto): hablar con un especialista
+- [Sena](https://www.somossena.com): cobranza B2B en Chile y Perú, con sus tres modalidades
+- [Sena Ópera](https://www.somossena.com/opera): el equipo de cobranza externo, con precio y preguntas frecuentes
+- [Recupera](https://www.somossena.com/recupera): recuperación de facturas vencidas, 15% de lo recuperado
+- [Plataforma Sena](https://www.somossena.com/plataforma): la plataforma para que tu propio equipo cobre
+- [Sena Ópera, landing de producto](https://agente.somossena.com): esta página
 
 ## Contacto
 
-Web: https://agente.somossena.com
-Empresa: Sena — somossena.com
-`.trim();
+hola@somossena.com
+`;
 
   return new NextResponse(content, {
     headers: {

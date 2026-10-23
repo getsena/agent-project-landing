@@ -255,6 +255,30 @@ test.describe('/api/lead: Meta CAPI solo reporta lo que el CRM guardó', () => {
     }
   })
 
+  test('manda a Meta el mismo event_id que el píxel del navegador', async () => {
+    const m = mockHubspot()
+    try {
+      const eventId = '3F2504E0-4F89-41D3-9A0C-0305E82C3301'
+      await postLead(req({ ...leadPayload, eventId }))
+      const evento = (capiCalls(m.calls)[0].body as { data: { event_id: string }[] }).data[0]
+      expect(evento.event_id).toBe(eventId.toLowerCase())
+    } finally {
+      m.restore()
+    }
+  })
+
+  test('sin eventId válido, Meta recibe un event_id generado en el servidor', async () => {
+    const m = mockHubspot()
+    try {
+      await postLead(req({ ...leadPayload, eventId: 'no-es-uuid' }))
+      const evento = (capiCalls(m.calls)[0].body as { data: { event_id: string }[] }).data[0]
+      expect(evento.event_id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+      expect(evento.event_id).not.toBe('no-es-uuid')
+    } finally {
+      m.restore()
+    }
+  })
+
   test('no reporta a Meta si HubSpot falla', async () => {
     const m = mockHubspot({ contactPost: [{ status: 500, json: { message: 'boom' } }] })
     try {
