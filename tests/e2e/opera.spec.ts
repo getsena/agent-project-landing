@@ -77,6 +77,18 @@ test('el JSON-LD describe a Sena con el mismo @id que somossena.com y una FAQ ig
   expect(visibles).toEqual(faq.mainEntity.map((e) => ({ q: e.name, a: e.acceptedAnswer.text })))
 })
 
+test('el HTML inicial, sin JavaScript, ya trae el JSON-LD con Service, Organization y FAQPage', async ({ request }) => {
+  // Como curl: solo la respuesta del servidor, sin ejecutar scripts.
+  const html = await (await request.get('/')).text()
+  const bloques = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)]
+  expect(bloques.length).toBeGreaterThan(0)
+  const tipos = bloques.flatMap(([, json]) => {
+    const ld = JSON.parse(json)
+    return (ld['@graph'] ?? [ld]).map((n: { '@type': string }) => n['@type'])
+  })
+  expect(tipos).toEqual(expect.arrayContaining(['Service', 'Organization', 'FAQPage']))
+})
+
 test('robots.txt solo trae directivas estándar y el Sitemap', async ({ request }) => {
   const robots = await (await request.get('/robots.txt')).text()
   expect(robots).toContain('User-agent: *')
