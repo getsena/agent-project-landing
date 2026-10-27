@@ -45,6 +45,24 @@ test('el HTML del servidor trae el copy aprobado, un solo H1 y el JSON-LD', asyn
   expect(faq.mainEntity).toHaveLength(6)
 })
 
+test('robots.txt solo trae directivas estándar y el Sitemap', async ({ request }) => {
+  const robots = await (await request.get('/robots.txt')).text()
+  expect(robots).toContain('User-agent: *')
+  expect(robots).toContain('Sitemap: https://agente.somossena.com/sitemap.xml')
+  expect(robots).not.toContain('LLMs:')
+})
+
+test('llms.txt enlaza a las páginas oficiales y no menciona proveedores ni países no confirmados', async ({ request }) => {
+  const llms = await (await request.get('/llms.txt')).text()
+  expect(llms).toContain('US$50')
+  expect(llms).toContain('](https://agente.somossena.com)')
+  expect(llms).toContain('](https://recupera.somossena.com)')
+  expect(llms).not.toMatch(/www\.somossena\.com\/(opera|recupera|plataforma)/)
+  for (const vetado of ['kapso', 'khipu', 'mercadopago', 'colombia', 'méxico', 'mexico', 'ecuador']) {
+    expect(llms.toLowerCase(), vetado).not.toContain(vetado)
+  }
+})
+
 test('la demo cambia de etapa con las pestañas', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('tab', { name: 'Acuerdo' }).click()

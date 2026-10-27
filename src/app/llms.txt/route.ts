@@ -17,10 +17,9 @@ export async function GET() {
 ## Páginas
 
 - [Sena](https://www.somossena.com): cobranza B2B en Chile y Perú, con sus tres modalidades
-- [Sena Ópera](https://www.somossena.com/opera): el equipo de cobranza externo, con precio y preguntas frecuentes
-- [Recupera](https://www.somossena.com/recupera): recuperación de facturas vencidas, 15% de lo recuperado
-- [Plataforma Sena](https://www.somossena.com/plataforma): la plataforma para que tu propio equipo cobre
-- [Sena Ópera, landing de producto](https://agente.somossena.com): esta página
+- [Sena Ópera](https://agente.somossena.com): el equipo de cobranza externo, con precio y preguntas frecuentes
+- [Recupera](https://recupera.somossena.com): recuperación de facturas vencidas, 15% de lo recuperado
+- [Plataforma Sena](https://www.somossena.com): la plataforma para que tu propio equipo cobre
 
 ## Contacto
 
