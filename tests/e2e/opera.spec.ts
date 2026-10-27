@@ -1,68 +1,164 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
-test('formulario renderiza con todos los campos y captura UTM + gclid de la URL', async ({ page }) => {
+// Landing de producto de Sena Ópera. Corre contra un servidor local:
+//
+//   yarn build && yarn start -p 39847
+//   E2E_BASE_URL=http://localhost:39847 yarn playwright test tests/e2e/opera.spec.ts
+const BASE = process.env.E2E_BASE_URL
+test.skip(!BASE, 'sin E2E_BASE_URL')
+test.use({ baseURL: BASE })
+
+// /api/lead interceptado: el test no toca HubSpot.
+async function interceptLead(page: Page, status = 200, body: unknown = { ok: true }) {
+  const sent: unknown[] = []
+  await page.route('**/api/lead', async (route) => {
+    sent.push(route.request().postDataJSON())
+    await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+  return sent
+}
+
+async function completarPaso2(page: Page) {
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByLabel('Nombre', { exact: true }).fill('Ana Pérez')
+  await page.getByLabel('Empresa', { exact: true }).fill('Acme SpA')
+  await page.getByLabel('Email de trabajo', { exact: true }).fill('ana@acme.cl')
+  await page.getByLabel('Teléfono', { exact: true }).fill('911112222')
+}
+
+test('el HTML del servidor trae el copy aprobado, un solo H1 y el JSON-LD', async ({ request }) => {
+  const html = await (await request.get('/')).text()
+  expect(html.match(/<h1[\s>]/g)).toHaveLength(1)
+  expect(html).toContain('<title>Sena Ópera · Tu equipo de cobranza B2B externo</title>')
+  expect(html).toContain('rel="canonical" href="https://agente.somossena.com"')
+  for (const texto of ['US$50', 'US$300', 'Empresas que ya cobran con Sena', 'Te respondemos en 24 horas']) {
+    expect(html).toContain(texto)
+  }
+  for (const retirado of ['146M', '40+', '15 países', 'agresiva', '48 horas', 'Sin compromiso', 'flujolink', 'Opera by']) {
+    expect(html, retirado).not.toContain(retirado)
+  }
+  const ld = JSON.parse(/<script type="application\/ld\+json">(.*?)<\/script>/s.exec(html)?.[1] ?? '{}')
+  const service = ld['@graph'].find((n: { '@type': string }) => n['@type'] === 'Service')
+  const faq = ld['@graph'].find((n: { '@type': string }) => n['@type'] === 'FAQPage')
+  expect(service.name).toBe('Sena Ópera')
+  expect(service.offers.map((o: { price: string }) => o.price)).toEqual(['50', '300'])
+  expect(faq.mainEntity).toHaveLength(6)
+})
+
+test('el JSON-LD describe a Sena con el mismo @id que somossena.com y una FAQ igual a la visible', async ({ page }) => {
+  type Nodo = Record<string, unknown> & { '@type': string }
+  const ORG_ID = 'https://www.somossena.com/#organization'
+  await page.goto('/')
+  const graph: Nodo[] = JSON.parse(
+    (await page.locator('script[type="application/ld+json"]').first().textContent()) ?? '{}',
+  )['@graph']
+  const nodo = (tipo: string) => graph.find((n) => n['@type'] === tipo) as Nodo
+
+  const org = nodo('Organization')
+  expect(org['@id']).toBe(ORG_ID)
+  expect(org.sameAs).toEqual(['https://www.linkedin.com/company/sena-latam/'])
+  expect(org).not.toHaveProperty('areaServed')
+
+  expect(nodo('WebSite').publisher).toEqual({ '@id': ORG_ID })
+
+  const service = nodo('Service') as Nodo & { provider: { '@id': string }; offers: { price: string; priceCurrency: string }[] }
+  expect(service.provider['@id']).toBe(ORG_ID)
+  expect(service.inLanguage).toBe('es-CL')
+  expect(service.areaServed).toEqual([
+    { '@type': 'Country', name: 'Chile', identifier: 'CL' },
+    { '@type': 'Country', name: 'Perú', identifier: 'PE' },
+  ])
+  expect(service.offers).toContainEqual(expect.objectContaining({ price: '50', priceCurrency: 'USD' }))
+
+  const faq = nodo('FAQPage') as Nodo & { mainEntity: { name: string; acceptedAnswer: { text: string } }[] }
+  const visibles = await page.locator('#faq details').evaluateAll((items) =>
+    items.map((d) => ({ q: d.querySelector('h3')?.textContent, a: d.querySelector('p')?.textContent })),
+  )
+  expect(visibles).toEqual(faq.mainEntity.map((e) => ({ q: e.name, a: e.acceptedAnswer.text })))
+})
+
+test('el HTML inicial, sin JavaScript, ya trae el JSON-LD con Service, Organization y FAQPage', async ({ request }) => {
+  // Como curl: solo la respuesta del servidor, sin ejecutar scripts.
+  const html = await (await request.get('/')).text()
+  const bloques = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)]
+  expect(bloques.length).toBeGreaterThan(0)
+  const tipos = bloques.flatMap(([, json]) => {
+    const ld = JSON.parse(json)
+    return (ld['@graph'] ?? [ld]).map((n: { '@type': string }) => n['@type'])
+  })
+  expect(tipos).toEqual(expect.arrayContaining(['Service', 'Organization', 'FAQPage']))
+})
+
+test('robots.txt solo trae directivas estándar y el Sitemap', async ({ request }) => {
+  const robots = await (await request.get('/robots.txt')).text()
+  expect(robots).toContain('User-agent: *')
+  expect(robots).toContain('Sitemap: https://agente.somossena.com/sitemap.xml')
+  expect(robots).not.toContain('LLMs:')
+})
+
+test('llms.txt enlaza a las páginas oficiales y no menciona proveedores ni países no confirmados', async ({ request }) => {
+  const llms = await (await request.get('/llms.txt')).text()
+  expect(llms).toContain('US$50')
+  expect(llms).toContain('](https://agente.somossena.com)')
+  expect(llms).toContain('](https://recupera.somossena.com)')
+  expect(llms).not.toMatch(/www\.somossena\.com\/(opera|recupera|plataforma)/)
+  for (const vetado of ['kapso', 'khipu', 'mercadopago', 'colombia', 'méxico', 'mexico', 'ecuador']) {
+    expect(llms.toLowerCase(), vetado).not.toContain(vetado)
+  }
+})
+
+test('la demo cambia de etapa con las pestañas', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('tab', { name: 'Acuerdo' }).click()
+  await expect(page.getByText('Un compromiso. Un próximo paso claro.')).toBeVisible()
+})
+
+test('formulario: paso 1, paso 2 y gracias en el mismo formulario', async ({ page }) => {
+  const sent = await interceptLead(page)
   await page.goto('/?utm_source=google&utm_medium=cpc&utm_campaign=test-e2e&gclid=test-gclid-123')
+  await completarPaso2(page)
+  await page.getByRole('button', { name: 'Enviar' }).click()
 
-  await expect(page.getByPlaceholder('Tu nombre')).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByPlaceholder('Tu apellido')).toBeVisible()
-  await expect(page.getByPlaceholder('Nombre de tu empresa')).toBeVisible()
-  await expect(page.getByPlaceholder('tu@email.com')).toBeVisible()
-  await expect(page.getByPlaceholder('Número')).toBeVisible()
-
-  // Radios de calificación de cartera — opera comparte este formulario con recupera
-  await expect(page.getByRole('radio', { name: '1-10' })).toBeAttached()
-  await expect(page.getByRole('radio', { name: '10-50' })).toBeAttached()
-  await expect(page.getByRole('radio', { name: '50+' })).toBeAttached()
-
-  await expect(page.getByRole('button', { name: /contactar a un especialista/i })).toBeVisible()
-
-  const url = page.url()
-  expect(url).toContain('utm_source=google')
-  expect(url).toContain('gclid=test-gclid-123')
+  await expect(page.getByRole('heading', { name: /gracias\. recibimos tu caso/i })).toBeVisible()
+  await expect(page).toHaveURL(/\/\?utm_source/)
+  expect(sent).toHaveLength(1)
+  expect(sent[0]).toMatchObject({
+    nombre: 'Ana',
+    apellido: 'Pérez',
+    empresa: 'Acme SpA',
+    email: 'ana@acme.cl',
+    caso: { cotizar: 'habitual', tipo_cartera: 'B2B', necesidad: 'delegar', canales: ['Correo'] },
+    gclid: 'test-gclid-123',
+    utmCampaign: 'test-e2e',
+  })
+  expect((sent[0] as { telefono: string }).telefono).toMatch(/^\+5[16]911112222$/)
+  expect((sent[0] as { eventId: string }).eventId).toMatch(/^[0-9a-f-]{36}$/)
 })
 
-test('submit sin datos muestra errores de validación', async ({ page }) => {
+test('formulario: el paso 2 valida los datos de contacto antes de enviar', async ({ page }) => {
+  const sent = await interceptLead(page)
   await page.goto('/')
-
-  await page.getByRole('button', { name: /contactar a un especialista/i }).click()
-
-  await expect(page.getByText(/el nombre es obligatorio/i)).toBeVisible({ timeout: 5_000 })
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByLabel('Email de trabajo', { exact: true }).fill('no-es-email')
+  await page.getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText('Escribe un email válido.')).toBeVisible()
+  await expect(page.getByText('Escribe tu nombre.')).toBeVisible()
+  expect(sent).toHaveLength(0)
 })
 
-test('/thankyou muestra confirmación, embed HubSpot y botón WhatsApp', async ({ page }) => {
-  await page.goto('/thankyou')
-
-  await expect(page.getByText(/hemos recibido tus datos/i)).toBeVisible({ timeout: 15_000 })
-
-  // HubSpot embed container
-  const embedContainer = page.locator('.meetings-iframe-container')
-  await expect(embedContainer).toBeAttached()
-  const dataSrc = await embedContainer.getAttribute('data-src')
-  expect(dataSrc).toContain('meetings.hubspot.com/francisco502')
-
-  // Fallback link
-  const fallbackLink = page.getByRole('link', { name: /abrir calendario/i })
-  await expect(fallbackLink).toBeVisible()
-
-  // WhatsApp button
-  const waLink = page.getByRole('link', { name: /hablar por whatsapp/i })
-  await expect(waLink).toBeVisible()
-  const waHref = await waLink.getAttribute('href')
-  expect(waHref).toContain('wa.me/56977290160')
-  expect(waHref).toContain('Opera')
-})
-
-test('header muestra CTA "Agendar diagnóstico" sin "Iniciar sesión"', async ({ page }) => {
+test('formulario: si el servidor falla, muestra el error y no da las gracias', async ({ page }) => {
+  await interceptLead(page, 502, { ok: false, error: 'No pudimos registrar tu solicitud.' })
   await page.goto('/')
-
-  await expect(page.getByRole('button', { name: /agendar diagnóstico/i })).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByRole('button', { name: /iniciar sesión/i })).not.toBeVisible()
+  await completarPaso2(page)
+  await page.getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByRole('form').getByRole('alert')).toContainText('No pudimos registrar tu caso')
+  await expect(page.getByRole('heading', { name: /gracias/i })).toHaveCount(0)
 })
 
-test('mobile 375px — CTA "Agendar diagnóstico" visible sin scroll (#202)', async ({ page }) => {
+test('mobile 375px: sin scroll horizontal y CTA del header visible', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto('/?utm_source=google&utm_medium=cpc')
-
-  // Header CTA activo en mobile
-  await expect(page.getByRole('button', { name: /agendar diagnóstico/i })).toBeVisible({ timeout: 15_000 })
+  await page.goto('/')
+  await expect(page.getByRole('banner').getByRole('link', { name: /cuéntanos tu caso/i })).toBeVisible()
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
 })
