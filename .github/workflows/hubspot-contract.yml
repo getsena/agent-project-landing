@@ -33,7 +33,10 @@ jobs:
           HUBSPOT_CONTRACT_TOKEN: ${{ secrets.HUBSPOT_CONTRACT_TOKEN }}
         run: test -n "$HUBSPOT_CONTRACT_TOKEN" || { echo "Falta el secreto HUBSPOT_CONTRACT_TOKEN"; exit 1; }
 
-      - run: yarn install --frozen-lockfile
+      # corepack instala la versión de Yarn fijada en packageManager (package.json).
+      - run: corepack enable
+
+      - run: yarn install --immutable
 
       - name: Contrato con HubSpot
         env:

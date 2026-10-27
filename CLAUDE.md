@@ -14,14 +14,14 @@ Landing
 
 Ver `package.json` / `pyproject.toml` / equivalente para la lista completa.
 
-**Para levantar localmente:**
+**Para levantar localmente** (Node 22, Yarn 4 fijado en `packageManager`):
 ```bash
-# Instalar dependencias
-npm install   # o: pip install -r requirements.txt / poetry install
-
-# Levantar servidor de desarrollo
-npm run dev   # o el comando equivalente del stack
+corepack enable          # una vez por máquina: activa la versión de Yarn del repo
+yarn install --immutable # nunca npm: el único lockfile es yarn.lock
+yarn dev
 ```
+
+**Gestor de paquetes:** Yarn 4 con `nodeLinker: node-modules` (`.yarnrc.yml`), igual que `recupera-landing` y `sena-landing`. Sin ese archivo Yarn 4 instala en modo PnP y `next build` falla. No agregar `package-lock.json`. Si `yarn install` cambia `yarn.lock` o `package.json`, ese cambio va en el commit de la dependencia que lo causó.
 
 ## Convenciones
 
