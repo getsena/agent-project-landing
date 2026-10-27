@@ -45,6 +45,38 @@ test('el HTML del servidor trae el copy aprobado, un solo H1 y el JSON-LD', asyn
   expect(faq.mainEntity).toHaveLength(6)
 })
 
+test('el JSON-LD describe a Sena con el mismo @id que somossena.com y una FAQ igual a la visible', async ({ page }) => {
+  type Nodo = Record<string, unknown> & { '@type': string }
+  const ORG_ID = 'https://www.somossena.com/#organization'
+  await page.goto('/')
+  const graph: Nodo[] = JSON.parse(
+    (await page.locator('script[type="application/ld+json"]').first().textContent()) ?? '{}',
+  )['@graph']
+  const nodo = (tipo: string) => graph.find((n) => n['@type'] === tipo) as Nodo
+
+  const org = nodo('Organization')
+  expect(org['@id']).toBe(ORG_ID)
+  expect(org.sameAs).toEqual(['https://www.linkedin.com/company/sena-latam/'])
+  expect(org).not.toHaveProperty('areaServed')
+
+  expect(nodo('WebSite').publisher).toEqual({ '@id': ORG_ID })
+
+  const service = nodo('Service') as Nodo & { provider: { '@id': string }; offers: { price: string; priceCurrency: string }[] }
+  expect(service.provider['@id']).toBe(ORG_ID)
+  expect(service.inLanguage).toBe('es-CL')
+  expect(service.areaServed).toEqual([
+    { '@type': 'Country', name: 'Chile', identifier: 'CL' },
+    { '@type': 'Country', name: 'Perú', identifier: 'PE' },
+  ])
+  expect(service.offers).toContainEqual(expect.objectContaining({ price: '50', priceCurrency: 'USD' }))
+
+  const faq = nodo('FAQPage') as Nodo & { mainEntity: { name: string; acceptedAnswer: { text: string } }[] }
+  const visibles = await page.locator('#faq details').evaluateAll((items) =>
+    items.map((d) => ({ q: d.querySelector('h3')?.textContent, a: d.querySelector('p')?.textContent })),
+  )
+  expect(visibles).toEqual(faq.mainEntity.map((e) => ({ q: e.name, a: e.acceptedAnswer.text })))
+})
+
 test('robots.txt solo trae directivas estándar y el Sitemap', async ({ request }) => {
   const robots = await (await request.get('/robots.txt')).text()
   expect(robots).toContain('User-agent: *')
