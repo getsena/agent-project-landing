@@ -30,10 +30,12 @@ const ANTIGUEDADES: { id: NonNullable<LeadCaso["antiguedad"]>; label: string }[]
   { id: "180+", label: "Más de 180 días" },
 ];
 
-// Ópera opera en Chile y Perú. Sin selección explícita, el prefijo sale de la moneda detectada por IP.
+// Clientes en Chile, Perú y Colombia. Sin selección explícita, el prefijo sale de la moneda detectada
+// por IP.
 const PAISES = [
   { prefijo: "+56", label: "Chile +56" },
   { prefijo: "+51", label: "Perú +51" },
+  { prefijo: "+57", label: "Colombia +57" },
 ];
 
 const ERROR_GENERICO = "No pudimos registrar tu caso. Intenta de nuevo o escríbenos a hola@somossena.com.";
@@ -97,7 +99,8 @@ export const CaseForm = () => {
   const turnstile = useTurnstile();
   const { ipCurrency } = useCurrencyStore();
   const [prefijoElegido, setPrefijo] = useState<string | null>(null);
-  const prefijo = prefijoElegido ?? (ipCurrency === "PEN" ? "+51" : "+56");
+  const prefijo =
+    prefijoElegido ?? (ipCurrency === "PEN" ? "+51" : ipCurrency === "COP" ? "+57" : "+56");
 
   // Al cambiar de paso, el foco va al primer campo del paso nuevo (o al agradecimiento): el botón que lo
   // tenía desaparece.

@@ -20,7 +20,7 @@ export const operaFaqs: Faq[] = [
   },
   {
     q: "¿Cuánto cuesta?",
-    a: "Desde US$50 al mes para carteras de menos de 10 clientes activos y US$300 al mes desde 50. Entre 10 y 50, te lo cotizamos en el análisis inicial, que es gratis.",
+    a: "Desde USD 50 al mes para carteras de menos de 10 clientes activos y USD 300 al mes desde 50. Entre 10 y 50, te lo cotizamos en el análisis inicial, que es gratis.",
   },
   {
     q: "¿También trabajan con carteras B2C?",

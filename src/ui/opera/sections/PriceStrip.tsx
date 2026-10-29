@@ -1,7 +1,7 @@
 import { Container } from "./shared";
 
 const items = [
-  { dato: "US$50", texto: "al mes, desde — carteras de menos de 10 clientes activos" },
+  { dato: "USD 50", texto: "al mes, desde — carteras de menos de 10 clientes activos" },
   { dato: "A medida", texto: "Diseñamos la estrategia sobre tu industria y tu cartera" },
   { dato: "2 semanas", texto: "Operando, desde que firmamos" },
 ];

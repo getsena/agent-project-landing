@@ -12,7 +12,7 @@ import Providers from "./providers";
 
 const TITLE = "Sena Ópera · Tu equipo de cobranza B2B externo";
 const DESCRIPTION =
-  "Ópera es el equipo de cobranza B2B que tu empresa no tiene: nosotros cobramos, tú ves los resultados. Desde US$50 al mes, con análisis de cartera sin costo. Chile y Perú.";
+  "Ópera es el equipo de cobranza B2B que tu empresa no tiene: nosotros cobramos, tú ves los resultados. Desde USD 50 al mes. Chile, Perú y Colombia.";
 
 export const metadata: Metadata = {
   title: TITLE,
