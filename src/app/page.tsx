@@ -42,6 +42,7 @@ const schema = {
       areaServed: [
         { "@type": "Country", name: "Chile", identifier: "CL" },
         { "@type": "Country", name: "Perú", identifier: "PE" },
+        { "@type": "Country", name: "Colombia", identifier: "CO" },
       ],
       inLanguage: "es-CL",
       offers: [
