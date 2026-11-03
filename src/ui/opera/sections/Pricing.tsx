@@ -1,9 +1,9 @@
 import { Container, Dot, Eyebrow, PillLink, SectionTitle } from "./shared";
 
 const filas = [
-  { cartera: "Menos de 10 clientes activos", precio: "US$50", destacado: true },
+  { cartera: "Menos de 10 clientes activos", precio: "USD 50", destacado: true },
   { cartera: "De 10 a 50 clientes activos", precio: "Se cotiza en el análisis inicial", destacado: false },
-  { cartera: "Más de 50 clientes activos", precio: "US$300", destacado: true },
+  { cartera: "Más de 50 clientes activos", precio: "USD 300", destacado: true },
 ];
 
 export const Pricing = () => (
