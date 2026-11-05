@@ -31,7 +31,7 @@ test('el HTML del servidor trae el copy aprobado, un solo H1 y el JSON-LD', asyn
   expect(html.match(/<h1[\s>]/g)).toHaveLength(1)
   expect(html).toContain('<title>Sena Ópera · Tu equipo de cobranza B2B externo</title>')
   expect(html).toContain('rel="canonical" href="https://agente.somossena.com"')
-  for (const texto of ['US$50', 'US$300', 'Empresas que ya cobran con Sena', 'Te respondemos en 24 horas']) {
+  for (const texto of ['USD 50', 'USD 300', 'Empresas que ya cobran con Sena', 'Te respondemos en 24 horas']) {
     expect(html).toContain(texto)
   }
   for (const retirado of ['146M', '40+', '15 países', 'agresiva', '48 horas', 'Sin compromiso', 'flujolink', 'Opera by']) {
@@ -67,6 +67,7 @@ test('el JSON-LD describe a Sena con el mismo @id que somossena.com y una FAQ ig
   expect(service.areaServed).toEqual([
     { '@type': 'Country', name: 'Chile', identifier: 'CL' },
     { '@type': 'Country', name: 'Perú', identifier: 'PE' },
+    { '@type': 'Country', name: 'Colombia', identifier: 'CO' },
   ])
   expect(service.offers).toContainEqual(expect.objectContaining({ price: '50', priceCurrency: 'USD' }))
 
@@ -98,11 +99,11 @@ test('robots.txt solo trae directivas estándar y el Sitemap', async ({ request 
 
 test('llms.txt enlaza a las páginas oficiales y no menciona proveedores ni países no confirmados', async ({ request }) => {
   const llms = await (await request.get('/llms.txt')).text()
-  expect(llms).toContain('US$50')
+  expect(llms).toContain('USD 50')
   expect(llms).toContain('](https://agente.somossena.com)')
   expect(llms).toContain('](https://recupera.somossena.com)')
   expect(llms).not.toMatch(/www\.somossena\.com\/(opera|recupera|plataforma)/)
-  for (const vetado of ['kapso', 'khipu', 'mercadopago', 'colombia', 'méxico', 'mexico', 'ecuador']) {
+  for (const vetado of ['kapso', 'khipu', 'mercadopago', 'méxico', 'mexico', 'ecuador']) {
     expect(llms.toLowerCase(), vetado).not.toContain(vetado)
   }
 })
